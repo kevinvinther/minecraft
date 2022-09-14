@@ -13,7 +13,7 @@ fn main() {
     //     .add_startup_system(setup)
     //     .run();
 
-    world_gen::gen_noise_img();
+    world_gen::print_perlin();
 }
 
 fn setup(
