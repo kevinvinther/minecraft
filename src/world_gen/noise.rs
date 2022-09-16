@@ -1,2 +1,1 @@
-mod image;
-pub mod perlin;
+pub mod noise_map;

@@ -1,22 +1,26 @@
-use self::noise::perlin::perlin_noise;
-
-mod terrain;
 mod noise;
+use image::ImageFormat;
+use ::noise::{
+    Perlin, Seedable,
+};
+
+use self::noise::noise_map::{self, NoiseMap};
 
 const DEFAULT_SEED: u32 = 0x5EED;
-const SCALE: f64 = 100.0;
+const SCALE: usize = 100;
 
-pub fn gen_noise_img() {
-    terrain::generate_noisemap(256, 256, DEFAULT_SEED)
-}
+pub fn save_img() {
+    let perlin = Perlin::new();
+    perlin.set_seed(DEFAULT_SEED);
 
-pub fn print_perms() {
-    let table = noise::perlin::PermutationTable::new(DEFAULT_SEED);
-    println!("{:?}", table);
-}
+    let n_map = NoiseMap::from_noisefn(
+        1024,
+        1024,
+        SCALE,
+        perlin,
+    );
 
-pub fn print_perlin() {
-    let table = noise::perlin::PermutationTable::new(DEFAULT_SEED);
-    let noise_res = perlin_noise(1.0 / SCALE, 1.0 / SCALE, table);
-    println!("{}", noise_res);
+    let _ = n_map.save_as_img(
+        "perlin1024x1024.png",
+    );
 }

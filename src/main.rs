@@ -2,6 +2,7 @@ use bevy::{
     prelude::*,
 };
 use bevy_flycam::{FlyCam, NoCameraPlayerPlugin};
+use world_gen::save_img;
 
 mod world_gen;
 
@@ -13,7 +14,7 @@ fn main() {
     //     .add_startup_system(setup)
     //     .run();
 
-    world_gen::print_perlin();
+    save_img();
 }
 
 fn setup(
