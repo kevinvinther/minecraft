@@ -3,6 +3,8 @@ use image::ImageFormat;
 use ::noise::{
     Perlin, Seedable,
 };
+use rand_seeder::{Seeder, SipHasher};   // Seeder is not cryptographically safe, but that does not matter for us
+use rand_pcg::Pcg64;
 
 use self::noise::noise_map::{self, NoiseMap};
 
@@ -12,25 +14,6 @@ const SCALE: usize = 100;
 const OCTAVES: usize = 1;
 const LACUNARITY: f64 = 2.0;
 const PERSISTANCE: f64 = 0.5;
-
-pub fn save_img() {
-    let perlin = Perlin::new();
-    perlin.set_seed(DEFAULT_SEED);
-
-    let n_map = NoiseMap::from_noisefn(
-        1024,
-        512,
-        SCALE,
-        OCTAVES,
-        LACUNARITY,
-        PERSISTANCE,
-        perlin,
-    );
-
-    let _ = n_map.save_as_img(
-        "/0_1/perlin1024x512.png",
-    );
-}
 
 /// Creates 4 images representing a NoiseMap
 pub fn noisemap_demo(
@@ -53,6 +36,7 @@ pub fn noisemap_demo(
             lacunarity,
             persistance,
             perlin,
+            DEFAULT_SEED,
         );
 
         let lac_fmt = lacunarity.to_string().replace(".", "_");

@@ -1,5 +1,8 @@
 use image::{ImageFormat, ImageResult};
 use noise::NoiseFn;
+use rand::prelude::*;
+use rand_seeder::{Seeder, SipHasher};   // Seeder is not cryptographically safe, but that does not matter for us
+use rand_pcg::Pcg64;
 
 pub const DEFAULT_SCALE: usize = 100;
 pub const DEFAULT_OCTAVES: usize = 1;
@@ -52,7 +55,8 @@ impl NoiseMap {
         octaves: usize,
         lacunarity: f64,
         persistance: f64,
-        noise_fn: impl NoiseFn<[f64; 2]>
+        noise_fn: impl NoiseFn<[f64; 2]>,
+        seed: u32,
     ) -> Self {
         let mut map = NoiseMap::new(
             height,
@@ -64,7 +68,7 @@ impl NoiseMap {
         map.set_lacunarity(lacunarity);
         map.set_persistance(persistance);
         
-        map.fill(noise_fn);
+        map.fill(noise_fn, seed);
         map
     }
 
@@ -217,23 +221,47 @@ impl NoiseMap {
         row: usize,
         column: usize,
         frequency: f64,
+        offset: (i32, i32),
     ) -> [f64; 2] {
-        let x = (row as f64 / self.scale as f64) * frequency;
-        let y = (column as f64 / self.scale as f64) * frequency;
+        let mut x = (row as f64 / self.scale as f64) * frequency;
+        let mut y = (column as f64 / self.scale as f64) * frequency;
+
+        x += offset.0 as f64;
+        y += offset.1 as f64;
+
         [x, y]
     }
 
     /// Fills the NoiseMap with values from the given noise function
-    pub fn fill(&mut self, noise_fn: impl NoiseFn<[f64; 2]>) {
+    pub fn fill(
+        &mut self,
+        noise_fn: impl NoiseFn<[f64; 2]>,
+        seed: u32,
+    ) {
+        let mut prng: Pcg64 = Seeder::from(seed).make_rng();
+
+        let mut octave_offsets = Vec::with_capacity(self.octaves);
+        for _ in 0..self.octaves {
+            let x = prng.gen_range(-1_000_000..1_000_000);
+            let y = prng.gen_range(-1_000_000..1_000_000);
+            octave_offsets.push((x, y));
+        }
+
         for column in 0..self.height {
             for row in 0..self.width {
                 let mut noise_height = 0.0;
                 let mut frequency = 1.0;
                 let mut amplitude = 1.0;
                 
-                for _ in 0..self.octaves {
+                for i in 0..self.octaves {
                     
-                    let q_point = self.noise_point(row, column, frequency);
+                    let q_point = 
+                        self.noise_point(
+                            row,
+                            column,
+                            frequency,
+                            octave_offsets[i]
+                        );
                     
                     let value = noise_fn.get(q_point);
                     noise_height += value * amplitude;
