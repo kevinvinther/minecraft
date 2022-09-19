@@ -1,8 +1,12 @@
 use image::{ImageFormat, ImageResult};
 use noise::NoiseFn;
 
-const DEFAULT_SCALE: usize = 100;
+pub const DEFAULT_SCALE: usize = 100;
 
+/// A struct holding noise data for a section of the given noise function
+/// TODO:
+///     Height and width should be replaced with two points
+///     Find an apropriate default scale (this can't be done yet)
 pub struct NoiseMap {
     height: usize,
     width: usize,
@@ -11,7 +15,9 @@ pub struct NoiseMap {
 }
 
 impl NoiseMap {
-    /// Creates a new, empty, NoiseMap
+    /// Creates a new and empty NoiseMap
+    /// 
+    /// The [`fill`](`Self::fill`) method should be used to fill the map with values
     pub fn new(height: usize, width: usize) -> Self {
         NoiseMap {
             height,
@@ -21,7 +27,7 @@ impl NoiseMap {
         }
     }
 
-    /// Creates and fills a NoiseMap with values from the give noise function
+    /// Creates and fills a NoiseMap with values from the given noise function
     pub fn from_noisefn(
         height: usize,
         width: usize,
@@ -38,40 +44,72 @@ impl NoiseMap {
         map
     }
 
-    /// Returns the actual index of the given row, column
+    /// Sets the scale of the NoiseMap
+    pub fn set_scale(&mut self, scale: usize) {
+        self.scale = scale;
+    }
+
+    /// Changes the size of the NoiseMap.
+    /// 
+    /// This will empty the map
+    pub fn resize(&mut self, height: usize, width: usize) {
+        self.height = height;
+        self.width = width;
+
+        self.values = Vec::with_capacity(height * width);
+    }
+
+    /// Returns the actual index of the given row, column.
+    /// 
+    /// Uses a single vec as it is faster and easier to create a buffer from.
+    /// 
+    /// # Panics
+    /// Panics if the NoiseMap is empty
     fn index(&self, row: usize, column: usize) -> usize {
+        assert!(!self.values.is_empty());
         row * self.width + column
     }
 
     /// Returns the value at the given index (the map is 0-index)
+    /// 
+    /// # Panics
+    /// Panics if the NoiseMap is empty
     pub fn get(&self, row: usize, column: usize) -> f64 {
         assert!(!self.values.is_empty());
         self.values[row * self.width + column]
     }
 
-    /// Set the value of a single element in the map
+    /// Set the value of a single element in the map.
+    /// 
+    /// # Panics
+    /// Panics if the NoiseMap is empty
+    /// 
+    /// (I don't know if we need this, so maybe delete later)
     pub fn set(&mut self, row: usize, column: usize, value: f64) {
+        assert!(!self.values.is_empty());
         self.values[row * self.width + column] = value;
     }
 
     /// Pushes a new element into the NoiseMap.
+    /// 
     /// Should only be used with empty NoiseMaps
     fn push(&mut self, value: f64) {
         self.values.push(value);
     }
 
     /// Returns the scaled index.
+    /// 
     /// This is used for a noise functions get method
     fn noise_point(&self, row: usize, column: usize) -> [f64; 2] {
-        let x = (row as f64) / self.scale as f64;
-        let y = (column as f64) / self.scale as f64;
-        [x, y]
+        let r = (row as f64) / self.scale as f64;
+        let c = (column as f64) / self.scale as f64;
+        [r, c]
     }
 
-    /// fills the NoiseMap with values from the given noise function
+    /// Fills the NoiseMap with values from the given noise function
     pub fn fill(&mut self, noise_fn: impl NoiseFn<[f64; 2]>) {
-        for row in 0..self.width {
-            for column in 0..self.height {
+        for column in 0..self.height {
+            for row in 0..self.width {
                 self.push(
                     noise_fn.get(self.noise_point(row, column))
                 );
@@ -79,19 +117,28 @@ impl NoiseMap {
         }
     }
 
-    /// maps values into 8bit values.
-    /// used for images
+    /// Maps values into 8bit values. 
+    /// Used as the buffer when imaging the map
+    /// 
+    /// # Panics
+    /// Panics if the NoiseMap is empty
     fn as_u8(&self) -> Vec<u8> {
+        assert!(!self.values.is_empty());
         self
             .values
             .iter()
-            .map(|v| ((*v + 1.0) * (256.0 / 2.0)) as u8)
+            .map(|v| ((*v + 1.0) / 2.0 * 256.0) as u8)
             .collect()
     }
 
-    /// Creates an image in the 'noisemap_demo' folder.
-    /// This is simply to show the NoiseMap so is simply grey-scale
+    /// Creates an achromatic image in the 'noisemap_demo' folder.
+    /// 
+    /// This is simply to show the NoiseMap
+    /// 
+    /// # Panics
+    /// Panics if the NoiseMap is empty
     pub fn save_as_img(&self, filename: &str) -> ImageResult<()>{
+        assert!(!self.values.is_empty());
         let path = String::from("noisemap_demo/") + filename;
         
         image::save_buffer(
