@@ -2,7 +2,7 @@ use bevy::{
     prelude::*,
 };
 use bevy_flycam::{FlyCam, NoCameraPlayerPlugin};
-use world_gen::save_img;
+use world_gen::noisemap_demo;
 
 mod world_gen;
 
@@ -14,7 +14,13 @@ fn main() {
     //     .add_startup_system(setup)
     //     .run();
 
-    save_img();
+    noisemap_demo(
+        100,
+        4,
+        2.0,
+        0.5,
+        "0_2"
+    );
 }
 
 fn setup(

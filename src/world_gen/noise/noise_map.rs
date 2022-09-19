@@ -2,6 +2,8 @@ use image::{ImageFormat, ImageResult};
 use noise::NoiseFn;
 
 pub const DEFAULT_SCALE: usize = 100;
+pub const DEFAULT_OCTAVES: usize = 1;
+pub const DEFAULT_LACUNARITY: f64 = 1.0;
 
 /// A struct holding noise data for a section of the given noise function
 /// TODO:
@@ -11,13 +13,21 @@ pub struct NoiseMap {
     height: usize,
     width: usize,
     values: Vec<f64>,
+    
+// Noise modyfiers:
     scale: usize,
+    octaves: usize,     // A NoiseMap contains noise built from several noise maps aka. octaves
+    lacunarity: f64,    // Lacunarity defines the frequency of octaves
+    persistance: f64,   // Persistance defines the amplitude of octaves
 }
 
 impl NoiseMap {
     /// Creates a new and empty NoiseMap
     /// 
     /// The [`fill`](`Self::fill`) method should be used to fill the map with values
+    /// ## Note
+    /// Note that all values, except for `height` and `width`, should be set with 
+    /// their assosiated methods, before any further use of NoiseMaps created from this method
     pub fn new(height: usize, width: usize) -> Self {
         NoiseMap {
             height,
@@ -29,20 +39,31 @@ impl NoiseMap {
 
     /// Creates and fills a NoiseMap with values from the given noise function.
     /// 
-    /// # Note
-    /// Note that the scale cannot be 0. If 0 is parsed into this method,
-    /// the scale will be set to [DEFAULT_SCALE]
+    /// # Panics
+    /// Panics if `lacunarity` or `persistance` are parsed as 
+    ///     [`NAN`](`std::primitive::f64::NAN`), 
+    ///     [`INFINITY`](`std::primitive::f64::INFINITY`), 
+    ///     or 
+    ///     [`NEG_INFINITY`](`std::primitive::f64::NEG_INFINITY`).
     pub fn from_noisefn(
         height: usize,
         width: usize,
         scale: usize,
+        octaves: usize,
+        lacunarity: f64,
+        persistance: f64,
         noise_fn: impl NoiseFn<[f64; 2]>
     ) -> Self {
         let mut map = NoiseMap::new(
             height,
             width,
         );
+
         map.set_scale(scale);
+        map.set_octaves(octaves);
+        map.set_lacunarity(lacunarity);
+        map.set_persistance(persistance);
+        
         map.fill(noise_fn);
         map
     }
@@ -56,6 +77,61 @@ impl NoiseMap {
         match scale {
             0 => self.scale = DEFAULT_SCALE,
             _ => self.scale = scale,
+        }
+    }
+
+    /// Sets the octaves of the NoiseMap.
+    /// 
+    /// # Note
+    /// Note that the octaves cannot be 0. If 0 is parsed into this method, 
+    /// the octaves will be set to [DEFAULT_OCTAVES]
+    pub fn set_octaves(&mut self, octaves: usize) {
+        match octaves {
+            0 => self.octaves = DEFAULT_OCTAVES,
+            _ => self.octaves = octaves,
+        }
+    }
+
+    /// Sets the lacunarity of the NoiseMap
+    /// 
+    /// # Panics
+    /// Panics if the parsed lacunarity is 
+    ///     [`NAN`](`std::primitive::f64::NAN`), 
+    ///     [`INFINITY`](`std::primitive::f64::INFINITY`), 
+    ///     or 
+    ///     [`NEG_INFINITY`](`std::primitive::f64::NEG_INFINITY`).
+    /// 
+    /// ## Note
+    /// Note that the lacunarity can't be 0. If 0 is parsed into this method, 
+    /// the lacunarity will be set to [DEFAULT_LACUNARITY]
+    pub fn set_lacunarity(&mut self, lacunarity: f64) {
+        match lacunarity {
+            _x if _x == 0.0 => self.lacunarity = DEFAULT_LACUNARITY,
+            _x if _x.is_finite() => self.lacunarity = lacunarity,
+            _x if _x.is_nan() => panic!("NaN lacunarity"),
+            _x if _x.is_infinite() => panic!("Infinite lacunarity"),
+            _ => unreachable!(),
+        }
+    }
+
+    /// Sets the persistance of the NoiseMap.
+    /// 
+    /// # Panics
+    /// Panics if the parsed persistance is 
+    ///     [`NAN`](`std::primitive::f64::NAN`), 
+    ///     [`INFINITY`](`std::primitive::f64::INFINITY`), 
+    ///     or 
+    ///     [`NEG_INFINITY`](`std::primitive::f64::NEG_INFINITY`).
+    /// 
+    /// ## Note
+    /// Note that although the persistance can be set to 0, 
+    /// doing this would be equivilant to only having 1 octave
+    pub fn set_persistance(&mut self, persistance: f64) {
+        match persistance {
+            _x if _x.is_finite() => self.persistance = persistance,
+            _x if _x.is_nan() => panic!("NaN lacunarity"),
+            _x if _x.is_infinite() => panic!("Infinite lacunarity"),
+            _ => unreachable!(),
         }
     }
 
@@ -107,24 +183,71 @@ impl NoiseMap {
         self.values.push(value);
     }
 
+    /// Normalizes the values of the NoiseMap between 0 and 1
+    /// 
+    /// Maybe find math crate to make this prettier :\
+    fn normalize(&mut self) {
+        let max = self.values   // Largest value
+            .iter()
+            .fold(
+                f64::NEG_INFINITY,
+                |x, &y| x.max(y)
+        );
+
+        let min = self.values   // Smallest value
+            .iter()
+                .fold(
+                    f64::INFINITY,
+                    |x, &y| x.min(y)
+                );
+
+        self.values = self.values
+            .iter_mut()
+            .map(|&mut x| {
+                (x - min) / (max - min) // Calculates the normalized x
+            })
+            .collect();
+    }
+
     /// Returns the scaled index.
     /// 
     /// This is used for a noise functions get method
-    fn noise_point(&self, row: usize, column: usize) -> [f64; 2] {
-        let r = (row as f64) / self.scale as f64;   // If scale is 0, we get `row / 0` (not good)
-        let c = (column as f64) / self.scale as f64;
-        [r, c]
+    fn noise_point(
+        &self,
+        row: usize,
+        column: usize,
+        frequency: f64,
+    ) -> [f64; 2] {
+        let x = (row as f64 / self.scale as f64) * frequency;
+        let y = (column as f64 / self.scale as f64) * frequency;
+        [x, y]
     }
 
     /// Fills the NoiseMap with values from the given noise function
     pub fn fill(&mut self, noise_fn: impl NoiseFn<[f64; 2]>) {
         for column in 0..self.height {
             for row in 0..self.width {
-                self.push(
-                    noise_fn.get(self.noise_point(row, column))
-                );
+                let mut noise_height = 0.0;
+                let mut frequency = 1.0;
+                let mut amplitude = 1.0;
+                
+                for _ in 0..self.octaves {
+                    
+                    let q_point = self.noise_point(row, column, frequency);
+                    
+                    let value = noise_fn.get(q_point);
+                    noise_height += value * amplitude;
+                    
+                    frequency *= self.lacunarity;   // Scale frequency with lacunarity
+                    amplitude *= self.persistance;  // Scale amplitude with percistance
+                }
+                self.push(noise_height);
+
+
             }
         }
+
+        self.normalize();
     }
 
     /// Maps values into 8bit values. 
@@ -137,7 +260,7 @@ impl NoiseMap {
         self
             .values
             .iter()
-            .map(|v| ((*v + 1.0) / 2.0 * 256.0) as u8)
+            .map(|&v| ((v * 256.0) as u8))
             .collect()
     }
 
@@ -168,6 +291,9 @@ impl Default for NoiseMap {
             width: 0,
             values: Vec::with_capacity(0),
             scale: DEFAULT_SCALE,
+            octaves: 1,
+            lacunarity: 1.0,
+            persistance: 1.0,
         }
     }
 }
