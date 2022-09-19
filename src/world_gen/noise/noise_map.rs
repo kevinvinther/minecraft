@@ -27,26 +27,36 @@ impl NoiseMap {
         }
     }
 
-    /// Creates and fills a NoiseMap with values from the given noise function
+    /// Creates and fills a NoiseMap with values from the given noise function.
+    /// 
+    /// # Note
+    /// Note that the scale cannot be 0. If 0 is parsed into this method,
+    /// the scale will be set to [DEFAULT_SCALE]
     pub fn from_noisefn(
         height: usize,
         width: usize,
         scale: usize,
         noise_fn: impl NoiseFn<[f64; 2]>
     ) -> Self {
-        let mut map = NoiseMap {
+        let mut map = NoiseMap::new(
             height,
             width,
-            values: Vec::with_capacity(height * width),
-            scale
-        };
+        );
+        map.set_scale(scale);
         map.fill(noise_fn);
         map
     }
 
-    /// Sets the scale of the NoiseMap
+    /// Sets the scale of the NoiseMap.
+    /// 
+    /// # Note
+    /// Note that the scale cannot be 0. If 0 is parsed into this method, 
+    /// the scale will be set to [DEFAULT_SCALE]
     pub fn set_scale(&mut self, scale: usize) {
-        self.scale = scale;
+        match scale {
+            0 => self.scale = DEFAULT_SCALE,
+            _ => self.scale = scale,
+        }
     }
 
     /// Changes the size of the NoiseMap.
@@ -101,7 +111,7 @@ impl NoiseMap {
     /// 
     /// This is used for a noise functions get method
     fn noise_point(&self, row: usize, column: usize) -> [f64; 2] {
-        let r = (row as f64) / self.scale as f64;
+        let r = (row as f64) / self.scale as f64;   // If scale is 0, we get `row / 0` (not good)
         let c = (column as f64) / self.scale as f64;
         [r, c]
     }
