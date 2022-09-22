@@ -10,7 +10,8 @@ pub const DEFAULT_LACUNARITY: f64 = 1.0;
 
 /// A struct holding noise data for a section of the given noise function
 /// TODO:
-///     Height and width should be replaced with two points
+///     Height and width should be replaced with two points(maybe)
+///     Possibly reformat all of this
 ///     Find an apropriate default scale (this can't be done yet)
 pub struct NoiseMap {
     height: usize,
@@ -164,9 +165,19 @@ impl NoiseMap {
     /// 
     /// # Panics
     /// Panics if the NoiseMap is empty
-    pub fn get(&self, row: usize, column: usize) -> f64 {
+    pub fn get_value(&self, row: usize, column: usize) -> f64 {
         assert!(!self.values.is_empty());
         self.values[row * self.width + column]
+    }
+
+    /// Returns the height of the NoiseMap
+    pub fn get_height(&self) -> usize {
+        self.height
+    }
+
+    /// Returns the width of the NoiseMap
+    pub fn get_width(&self) -> usize {
+        self.width
     }
 
     /// Set the value of a single element in the map.
@@ -302,7 +313,7 @@ impl NoiseMap {
     /// Panics if the NoiseMap is empty
     pub fn save_as_img(&self, filename: &str) -> ImageResult<()>{
         assert!(!self.values.is_empty());
-        let path = String::from("noisemap_demo/") + filename;
+        let path = String::from("demos/noisemap_demo/") + filename;
         
         image::save_buffer(
             path,

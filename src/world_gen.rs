@@ -1,4 +1,6 @@
 mod noise;
+mod terrain;
+
 use image::ImageFormat;
 use ::noise::{
     Perlin, Seedable,
@@ -7,6 +9,7 @@ use rand_seeder::{Seeder, SipHasher};   // Seeder is not cryptographically safe,
 use rand_pcg::Pcg64;
 
 use self::noise::noise_map::{self, NoiseMap};
+use self::terrain::texture::{self, texture_from_noise_map};
 
 const DEFAULT_SEED: u32 = 0x5EED;
 
@@ -44,7 +47,7 @@ pub fn noisemap_demo(
         let per_fmt = persistance.to_string().replace(".", "_");
         
         let filename = 
-            format!("/{}/perlin{}x{}-{}-{}-{}.png",
+            format!("{}/perlin{}x{}-{}-{}-{}.png",
             version,
             height,
             width,
@@ -56,4 +59,43 @@ pub fn noisemap_demo(
         let _ = n_map.save_as_img(&filename);
         println!();
     }
+}
+
+pub fn texture_demo(
+    height: usize,
+    width: usize,
+    scale: usize,
+    octaves: usize,
+    lacunarity: f64,
+    persistance: f64,
+    version: &str,
+) {
+    let perlin = Perlin::new();
+    perlin.set_seed(DEFAULT_SEED);
+
+    let n_map = NoiseMap::from_noisefn(
+        height,
+        width,
+        scale,
+        octaves,
+        lacunarity,
+        persistance,
+        perlin,
+        DEFAULT_SEED
+    );
+
+    let lac_fmt = lacunarity.to_string().replace(".", "_");
+    let per_fmt = persistance.to_string().replace(".", "_");
+    
+    let filename = 
+        format!("{}/perlin{}x{}-{}-{}-{}.png",
+        version,
+        height,
+        width,
+        octaves,
+        lac_fmt,
+        per_fmt
+    );
+    
+    texture_from_noise_map(n_map, &filename);
 }
