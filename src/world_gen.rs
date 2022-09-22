@@ -26,8 +26,9 @@ pub fn noisemap_demo(
     let perlin = Perlin::new();
     perlin.set_seed(DEFAULT_SEED);
 
-    let sizes = [(256, 256), (1024, 1024), (512, 1024), (1024, 512)];
+    let sizes = [(256, 256), (512, 1024), (1024, 512), (1024, 1024)];
     for (height, width) in sizes {
+        println!("Imaging noisemap{}x{}", height, width);
         let n_map = NoiseMap::from_noisefn(
             height,
             width,
@@ -53,5 +54,6 @@ pub fn noisemap_demo(
         );
 
         let _ = n_map.save_as_img(&filename);
+        println!();
     }
 }

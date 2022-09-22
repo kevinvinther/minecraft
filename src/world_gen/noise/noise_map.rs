@@ -189,7 +189,7 @@ impl NoiseMap {
 
     /// Normalizes the values of the NoiseMap between 0 and 1
     /// 
-    /// Maybe find math crate to make this prettier :\
+    /// Maybe find a math crate to make this prettier :\
     fn normalize(&mut self) {
         let max = self.values   // Largest value
             .iter()
@@ -238,21 +238,25 @@ impl NoiseMap {
         noise_fn: impl NoiseFn<[f64; 2]>,
         seed: u32,
     ) {
+        // Generate random offsets for all octaves based on the seed
         let mut prng: Pcg64 = Seeder::from(seed).make_rng();
-
         let mut octave_offsets = Vec::with_capacity(self.octaves);
+        
         for _ in 0..self.octaves {
             let x = prng.gen_range(-1_000_000..1_000_000);
             let y = prng.gen_range(-1_000_000..1_000_000);
+            println!("\toctave_offset{{ x: {}, y: {} }}", x, y);
             octave_offsets.push((x, y));
         }
 
+        // Fill the NoiseMap
         for column in 0..self.height {
             for row in 0..self.width {
                 let mut noise_height = 0.0;
                 let mut frequency = 1.0;
                 let mut amplitude = 1.0;
                 
+                // Samples and combines all octaves
                 for i in 0..self.octaves {
                     
                     let q_point = 
@@ -266,12 +270,10 @@ impl NoiseMap {
                     let value = noise_fn.get(q_point);
                     noise_height += value * amplitude;
                     
-                    frequency *= self.lacunarity;   // Scale frequency with lacunarity
-                    amplitude *= self.persistance;  // Scale amplitude with percistance
+                    frequency *= self.lacunarity;   // Scale frequency with lacunarity for every octave
+                    amplitude *= self.persistance;  // Scale amplitude with percistance for every octave
                 }
-                self.push(noise_height);
-
-
+                self.push(noise_height);    // Pushes the final value to the NoiseMap
             }
         }
 
