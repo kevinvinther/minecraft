@@ -20,6 +20,7 @@ pub fn texture_from_noise_map(
             noise_map.get_height() as u32,
             |x, y| {
                 match noise_map.get_value(x as usize, y as usize) {
+                    // This sucks, i gotta redo it
                     c if c <= 0.4   => Rgb::<u8>([ 51, 134, 255]),
                     c if c > 0.4    => Rgb::<u8>([ 30, 176,  23]),
                     _ => {
