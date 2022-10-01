@@ -2,7 +2,7 @@ use bevy::{
     prelude::*,
 };
 use bevy_flycam::{FlyCam, NoCameraPlayerPlugin};
-use world_gen::{noisemap_demo, texture_demo};
+use world_gen::{texture_demo};
 
 mod world_gen;
 
@@ -25,6 +25,9 @@ fn main() {
     );
 }
 
+/// Currently the only startup system.
+/// 
+/// Includes EVERYTHING
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,

@@ -1,14 +1,9 @@
 /// This is a temp file, just to see if this works
 
-use std::ops::{
-    Range, RangeFrom, RangeTo,
-    RangeFull, RangeInclusive, RangeToInclusive,
-};
-use std::path::Path;
 use image::{
     Rgb, ImageBuffer, 
 };
-use crate::world_gen::noise::noise_map::NoiseMap;
+use crate::world_gen::{noise::noise_map::NoiseMap, terrain::terrain_type::TerrainType};
 
 pub fn texture_from_noise_map(
     noise_map: NoiseMap,
@@ -19,23 +14,19 @@ pub fn texture_from_noise_map(
             noise_map.get_width() as u32,
             noise_map.get_height() as u32,
             |x, y| {
-                match noise_map.get_value(x as usize, y as usize) {
-                    // This sucks, i gotta redo it
-                    c if c <= 0.4   => Rgb::<u8>([ 51, 134, 255]),
-                    c if c > 0.4    => Rgb::<u8>([ 30, 176,  23]),
-                    _ => {
-                        println!("Invalid value!");
-                        Rgb::<u8>([255, 0, 255])
-                    }
-                }
+                let terrain = 
+                    TerrainType::from_height(
+                        noise_map.get_value(x as usize, y as usize)
+                    );
+                terrain.colour()
         });
     let path = String::from("demos/terrain_demo/") + filename;
-    println!("{}", path);
+    println!("\nSaving image to path:\n\t{}\n\t...", path);
 
     let res = img.save(path);
 
     match res {
-        Ok(_) => println!("We good"),
+        Ok(_) => println!("\tno errors saving image, we good 🚜\n"),
         Err(e) => println!("Oh no\n{}", e),
     }
 }
