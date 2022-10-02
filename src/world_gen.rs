@@ -1,16 +1,13 @@
 mod noise;
 mod terrain;
 
-use image::ImageFormat;
 use ::noise::{
     Perlin, Seedable,
 };
-use rand_seeder::{Seeder, SipHasher};   // Seeder is not cryptographically safe, but that does not matter for us
-use rand_pcg::Pcg64;
 
-use self::noise::noise_map::{self, NoiseMap};
+use self::noise::noise_map::NoiseMap;
 use self::terrain::height_map::HeightMap;
-use self::terrain::texture::{self, texture_from_noise_map};
+use self::terrain::texture::texture_from_noise_map;
 use noise_consts::*;
 
 /// Constants relevant to generating noise

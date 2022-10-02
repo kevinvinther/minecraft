@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use image::ImageResult;
 use noise::NoiseFn;
 use rand::prelude::*;
@@ -145,7 +143,7 @@ impl NoiseMap {
     /// Changes the size of the NoiseMap.
     /// 
     /// This will empty the map
-    pub fn resize(&mut self, height: usize, width: usize) {
+    pub fn _resize(&mut self, height: usize, width: usize) {
         self.height = height;
         self.width = width;
 
@@ -155,7 +153,7 @@ impl NoiseMap {
     /// Returns the actual index of the given row, column.
     /// 
     /// Uses a single vec as it is faster and easier to create a buffer from.
-    fn index(&self, row: usize, column: usize) -> usize {
+    fn _index(&self, row: usize, column: usize) -> usize {
         row * self.width + column
     }
 
@@ -184,7 +182,7 @@ impl NoiseMap {
     /// Panics if the NoiseMap is empty
     /// 
     /// (I don't know if we need this, so maybe delete later)
-    pub fn set(&mut self, row: usize, column: usize, value: f64) {
+    pub fn _set(&mut self, row: usize, column: usize, value: f64) {
         assert!(!self.values.is_empty());
         self.values[row * self.width + column] = value;
     }

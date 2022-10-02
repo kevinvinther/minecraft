@@ -47,13 +47,6 @@ impl HeightMap {
         }
     }
 
-
-    fn set(&mut self, index: usize, value: Height) {
-        assert!(index < self.height * self.width);
-
-        self.values[index] = value;
-    }
-
     pub fn from_noise_map<F>(noise_map: &NoiseMap, mapper: F) -> Self 
     where
         F: Fn(f64) -> Height

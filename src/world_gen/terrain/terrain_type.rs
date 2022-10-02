@@ -1,7 +1,9 @@
 /// Not sure if we will actually end up using this (maybe), but it should help
 /// make working with the 2D texture things easier.
+/// 
+/// The error handling here isn't perfect, but it should be plenty for this.
 
-use std::ops::{Range, RangeBounds, RangeInclusive};
+use std::ops::Range;
 use image::Rgb;
 
 use terrain_data::meta_data as meta_data;
@@ -13,10 +15,15 @@ use super::height_map::Height;
 /// 
 /// The 'None' variant is not a valid TerrainType. Any method called on it will result in panic.
 /// The intention of [`TerrainType::None`] is for potentially recoverable errors.
+/// 
+/// Maybe use a HashMap to point from variant to constant?
 #[derive(Debug, Copy, Clone)]
 pub enum TerrainType {
+    DeepOcean,
     Ocean,
-    Land,
+    Beach,
+    LowLand,
+    HighLand,
 
     #[allow(dead_code)]
     None,
@@ -50,10 +57,13 @@ impl TerrainType {
             ", height, meta_data::MIN_VALUE, height, meta_data::MIN_VALUE,
         );
 
-        // Not sure if there is a better way of doing this, but this is what i could come up with
+        // Not sure if there is a better way of doing this, but this is what i came up with
         match height {
-            _ if terrain_data::OCEAN.contains(height)   => return Self::Ocean,
-            _ if terrain_data::LAND.contains(height)    => return Self::Land,
+            _ if terrain_data::DEEP_OCEAN.contains(height)  => Self::DeepOcean,
+            _ if terrain_data::OCEAN.contains(height)       => Self::Ocean,
+            _ if terrain_data::BEACH.contains(height)       => Self::Beach,
+            _ if terrain_data::LOW_LAND.contains(height)    => Self::LowLand,
+            _ if terrain_data::HIGH_LAND.contains(height)   => Self::HighLand,
 
             _ => {  // I can't imagine recovery from here ever being a good idea, panic seems appropriate
                 panic!("\n
@@ -77,8 +87,11 @@ impl TerrainType {
     /// Parsing the [`None`](TerrainType::None) variant will panic.
     pub fn colour(&self) -> Rgb<u8> {
         match self {
-            Self::Ocean => terrain_data::OCEAN.colour,
-            Self::Land  => terrain_data::LAND.colour,
+            Self::DeepOcean => terrain_data::DEEP_OCEAN.colour,
+            Self::Ocean     => terrain_data::OCEAN.colour,
+            Self::Beach     => terrain_data::BEACH.colour,
+            Self::LowLand   => terrain_data::LOW_LAND.colour,
+            Self::HighLand  => terrain_data::HIGH_LAND.colour,
 
             Self::None  => {
                 panic!("\n{}{}{}{}",
@@ -94,12 +107,18 @@ impl TerrainType {
     /// Returns true if the value is within the scope of a TerrainType variant.
     /// 
     /// It's just nicer to write it like this, don't actually know if we need this method.
-    pub fn contains(&self, value: &Height) -> bool {
+    pub fn _contains(&self, value: &Height) -> bool {
         match self {
+            Self::DeepOcean
+                => terrain_data::DEEP_OCEAN.range.contains(value),
             Self::Ocean 
-                => return terrain_data::OCEAN.range.contains(value),
-            Self::Land
-                => return terrain_data::LAND.range.contains(value),
+                => terrain_data::OCEAN.range.contains(value),
+            Self::Beach
+                => terrain_data::BEACH.range.contains(value),
+            Self::LowLand
+                => terrain_data::LOW_LAND.range.contains(value),
+            Self::HighLand
+                => terrain_data::HIGH_LAND.range.contains(value),
             
             Self::None => {
                 panic!("\n{}{}{:?}{}{}{}",
@@ -114,59 +133,72 @@ impl TerrainType {
 }
 
 /// Generic type to hold relevant data to define different types of terrain.
-pub struct TypeData<R>
-where
-    R: RangeBounds<Height>
-{
-    range: R,
+pub struct TypeData {
+    range: Range<Height>,
     colour: Rgb<u8>,
 }
 
-impl TypeData<Range<Height>> {
+impl TypeData {
     fn contains(&self, value: &Height) -> bool {
         self.range.contains(value)
     }
 }
 
-impl TypeData<RangeInclusive<Height>> {
-    fn contains(&self, value: &Height) -> bool {
-        self.range.contains(value)
-    }
-}
-
-/// Data for the different terrain types.
+/// Data defining the different terrain types.
 /// 
-/// Note, that i plan on expanding the range of values in the future, to make it more intuitive,
-/// but for now, this is made to work on the pure output data from a NoiseMap.
+/// I did try making this work with [`Range`] and [`RangeInclusive`]
+/// as to not exclude [`MAX_VALUE`], which is a valid value, but this ended up causing a couple problems i was unable to solve in a nice way. 
+/// However, with the addition of [`HeightMap`], simply sticking to [`Range`] is possible as it lets us handle the noise values as integers. 
+/// That still isn't perfect, but it's a lot better than before.
+/// 
+/// [`Range`]: std::ops::Range
+/// [`RangeInclusive`]: std::ops::RangeInclusive
+/// [`HeightMap`]: crate::world_gen::terrain::height_map::HeightMap
+/// [`MAX_VALUE`]: meta_data::MAX_VALUE
 mod terrain_data {
     use image::Rgb;
-    use std::ops::{Range, RangeInclusive};
 
-    use super::{TypeData, Height};
+    use super::TypeData;
+    use super::Height;
     use meta_data::*;
 
     /// Data to define valid values for TypeData constants
     pub(super) mod meta_data {
-        use super::super::{Height};
+        use super::Height;
         
         /// The smallest, valid, value for the range of a terrain type
         pub const MIN_VALUE: Height = 0;
 
-        /// The largest, valid, value for the range of a terrain type
-        pub const MAX_VALUE: Height =  100;
+        /// The largest, valid, value for the range of a terrain type.
+        /// 
+        /// Range is not inclusive on the maximum, so we +1 to allow all values. 
+        /// This addition is written excplicitly to make this clearer.
+        pub const MAX_VALUE: Height =  100 + 1;
     }
 
-
-    /// Women when they see me
-    pub const OCEAN: TypeData<Range<Height>> = TypeData {
-        range:  MIN_VALUE..50,
-        colour: Rgb([ 50,  99, 195]),
+    pub const DEEP_OCEAN: TypeData = TypeData {
+        range:  MIN_VALUE..35,
+        colour: Rgb([ 15,  82, 186]),
     };
 
-    /// Women when i talk to them :(
-    pub const LAND: TypeData<RangeInclusive<Height>> = TypeData {
-        range:  50..=MAX_VALUE,
-        colour: Rgb([ 69, 120,  20]),
+    pub const OCEAN: TypeData = TypeData {
+        range:  35..45,
+        colour: Rgb([ 65, 105, 225]),
+    };
+
+    pub const BEACH: TypeData = TypeData {
+        range:  45..50,
+        colour: Rgb([194, 178, 128]),
+    };
+
+    pub const LOW_LAND: TypeData = TypeData {
+        range:  50..55,
+        colour: Rgb([ 19, 133,  16]),
+    };
+
+    pub const HIGH_LAND: TypeData = TypeData {
+        range:  55..MAX_VALUE,
+        colour: Rgb([ 19, 109,  21]),
     };
 }
 
@@ -181,6 +213,6 @@ mod terrain_data {
 mod tests {
     #[test]
     fn terrain_type_range_validation() {
-        todo!();
+        unimplemented!();
     }
 }
