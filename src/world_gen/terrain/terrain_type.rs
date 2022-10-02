@@ -7,7 +7,7 @@ use image::Rgb;
 use terrain_data::meta_data as meta_data;
 
 /// The type of the height value
-type Height = f64;
+use super::height_map::Height;
 
 /// All different types of terrain.
 /// 
@@ -150,22 +150,22 @@ mod terrain_data {
         use super::super::{Height};
         
         /// The smallest, valid, value for the range of a terrain type
-        pub const MIN_VALUE: Height = -1.0;
+        pub const MIN_VALUE: Height = 0;
 
         /// The largest, valid, value for the range of a terrain type
-        pub const MAX_VALUE: Height =  1.0;
+        pub const MAX_VALUE: Height =  100;
     }
 
 
     /// Women when they see me
     pub const OCEAN: TypeData<Range<Height>> = TypeData {
-        range:  MIN_VALUE..0.4,
+        range:  MIN_VALUE..50,
         colour: Rgb([ 50,  99, 195]),
     };
 
     /// Women when i talk to them :(
     pub const LAND: TypeData<RangeInclusive<Height>> = TypeData {
-        range:  0.4..=MAX_VALUE,
+        range:  50..=MAX_VALUE,
         colour: Rgb([ 69, 120,  20]),
     };
 }

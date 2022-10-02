@@ -5,18 +5,20 @@ use image::{
 };
 use crate::world_gen::{noise::noise_map::NoiseMap, terrain::terrain_type::TerrainType};
 
+use super::height_map::HeightMap;
+
 pub fn texture_from_noise_map(
-    noise_map: NoiseMap,
+    height_map: HeightMap,
     filename: &str,
 ) {
     let img 
         = ImageBuffer::from_fn(
-            noise_map.get_width() as u32,
-            noise_map.get_height() as u32,
+            height_map.get_width() as u32,
+            height_map.get_height() as u32,
             |x, y| {
                 let terrain = 
                     TerrainType::ident(
-                        &noise_map.get_value(x as usize, y as usize)
+                        &height_map.get(x as usize, y as usize)
                     );
                 terrain.colour()
         });

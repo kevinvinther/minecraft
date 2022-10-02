@@ -1,7 +1,9 @@
-use image::{ImageFormat, ImageResult};
+use std::ops::Deref;
+
+use image::ImageResult;
 use noise::NoiseFn;
 use rand::prelude::*;
-use rand_seeder::{Seeder, SipHasher};   // Seeder is not cryptographically safe, but that does not matter for us
+use rand_seeder::Seeder;   // Seeder is not cryptographically safe, but that does not matter for us
 use rand_pcg::Pcg64;
 
 pub const DEFAULT_SCALE: usize = 100;
@@ -153,11 +155,7 @@ impl NoiseMap {
     /// Returns the actual index of the given row, column.
     /// 
     /// Uses a single vec as it is faster and easier to create a buffer from.
-    /// 
-    /// # Panics
-    /// Panics if the NoiseMap is empty
     fn index(&self, row: usize, column: usize) -> usize {
-        assert!(!self.values.is_empty());
         row * self.width + column
     }
 
