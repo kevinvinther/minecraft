@@ -1,106 +1,173 @@
 /// Not sure if we will actually end up using this (maybe), but it should help
 /// make working with the 2D texture things easier.
-/// 
-/// Consider finding a better way of handling TerrainType's and their assosiated constants.
-/// Maybe a handler type?
-/// 
-/// I would like it, if we only needed to change one thing to add/remove TerrainType's, will look at tomorrow i think
 
-use std::ops::Range;
+use std::ops::{Range, RangeBounds, RangeInclusive};
 use image::Rgb;
 
-#[non_exhaustive]
+use terrain_data::meta_data as meta_data;
+
+/// The type of the height value
+type Height = f64;
+
+/// All different types of terrain.
+/// 
+/// The 'None' variant is not a valid TerrainType. Any method called on it will result in panic.
+/// The intention of [`TerrainType::None`] is for potentially recoverable errors.
 #[derive(Debug, Copy, Clone)]
 pub enum TerrainType {
     Ocean,
     Land,
 
-    /// The 'None' variant 
+    #[allow(dead_code)]
     None,
 }
 
 /// Identify terrain
 impl TerrainType {
-    /// Returns the apropriate TerrainType according to the parsed height.
+    /// Identifies the TerrainType whose range contains the given height
     /// 
     /// # Panics
     /// 
-    /// Heights not found in any TerrainType range are invalid, causing a panic.
-    pub fn from_height(height: f64) -> TerrainType {
+    /// Height values not contained in any TerrainType range are invalid.
+    pub fn ident(height: &Height) -> TerrainType {
+        // Assert that height is within valid bounds according to MAX_VALUE 
+        assert!(
+            height <= &meta_data::MAX_VALUE,
+            "\n
+            INVALID HEIGHT VALUE:\n
+            Parsed height = {:?}\tLargest valid height value = {}\n
+            \t  Cannot identify TerrainType based on invalid value! ({:?} > {})\n
+            ", height, meta_data::MAX_VALUE, height, meta_data::MAX_VALUE,
+        );
+
+        // Assert that height is within valid bounds according to MIN_VALUE
+        assert!(
+            height >= &meta_data::MIN_VALUE,
+            "\n
+            INVALID HEIGHT VALUE:\n
+            Parsed height = {:?}\tSmallest valid height value = {}\n
+            \t  Cannot identify TerrainType based on invalid value! ({:?} <) {}\n
+            ", height, meta_data::MIN_VALUE, height, meta_data::MIN_VALUE,
+        );
+
+        // Not sure if there is a better way of doing this, but this is what i could come up with
         match height {
-            h if ranges::OCEAN.contains(&h) => TerrainType::Ocean,
-            h if ranges::LAND.contains(&h)  => TerrainType::Land,
+            _ if terrain_data::OCEAN.contains(height)   => return Self::Ocean,
+            _ if terrain_data::LAND.contains(height)    => return Self::Land,
 
-            // I don't like using a catch-all here, but don't know how you would not
-            // If a new range is added, the compiler will NOT emit an error, can this be fixed?
-            h => panic!("Invalid height value! height{{ {} }}", h)
+            _ => {  // I can't imagine recovery from here ever being a good idea, panic seems appropriate
+                panic!("\n
+                INVALID HEIGHT VALUE:\n
+                Could not identify a valid TerrainType given value {:?}.\n
+                \t  It is possible a TerrainType has been excluded from the `crate::world_gen::terrain::terrain_type::TerrainType::ident()` method\n
+                ",
+                height
+                )
+            }
         }
     }
 }
 
-/// Terrain ranges
-impl TerrainType {
-    /// Returns the height range for the provided TerrainType variant.
-    /// 
-    /// # Panics
-    /// 
-    /// Parsing the [`None`](TerrainType::None) variant will panic, as this type is invalid.
-    pub fn range(&self) -> Range<f64>{        
-        match self {
-            Self::Ocean => ranges::OCEAN,
-            Self::Land  => ranges::LAND,
-            
-            // In case of something invalid happening
-            // Consider returning an empty range, i'm not sure
-            Self::None  => panic!(
-                "TerrainType::None is not a valid terrain type and has no assosiated range!"
-            ),
-        }
-    }
-}
-
-/// Terrain colour values
+/// Data-relevant methods for TerrainType's
 impl TerrainType {
     /// Returns the assosiated colour of the TerrainType variant.
     /// 
     /// # Panics
     /// 
-    /// Parsing the [`None`](TerrainType::None) variant will panic, as this type is invalid.
+    /// Parsing the [`None`](TerrainType::None) variant will panic.
     pub fn colour(&self) -> Rgb<u8> {
         match self {
-            Self::Ocean => colours::OCEAN,
-            Self::Land  => colours::LAND,
+            Self::Ocean => terrain_data::OCEAN.colour,
+            Self::Land  => terrain_data::LAND.colour,
 
-            Self::None  => panic!(
-                "TerrainType::None is not a valid terrain type and has no assosiated colour!"
-            ),
+            Self::None  => {
+                panic!("\n{}{}{}{}",
+                    "INVALID METHOD CALL:\n",
+                    "Attempted to get colour of TerrainType::None\n",
+                    "\tThe None variant represents the lack of a type, as such,",
+                    "\tit is invalid for methods accessing data related to a TerrainType.\n",
+                );
+            }
         }
+    }
+
+    /// Returns true if the value is within the scope of a TerrainType variant.
+    /// 
+    /// It's just nicer to write it like this, don't actually know if we need this method.
+    pub fn contains(&self, value: &Height) -> bool {
+        match self {
+            Self::Ocean 
+                => return terrain_data::OCEAN.range.contains(value),
+            Self::Land
+                => return terrain_data::LAND.range.contains(value),
+            
+            Self::None => {
+                panic!("\n{}{}{:?}{}{}{}",
+                    "INVALID METHOD CALL:\n",
+                    "Attempted to range match value ", value, " on TerrainType::None\n",
+                        "\tThe None variant represents the lack of a type, as such,",
+                        "\tit is invalid for methods accessing data related to a TerrainType.\n",
+                );   
+            }
+        }        
     }
 }
 
-/// Ranges for the different terrain types
-pub(super) mod ranges {
-    use std::ops::{Range, RangeInclusive};
-
-    /// The smallest, valid, value for a TerrainType's range
-    const MIN_VALUE: f64 = -1.0;
-
-    /// The largest, valid, value for a TerrainType's range.
-    /// 
-    /// I kinda forgot about how 1.0 ends up excluded, so now it's working.
-    /// 
-    /// i plan on translating the noise map to a height map containing integer values, but for now... this.
-    const MAX_VALUE: f64 = 1.5;
-
-    pub const OCEAN: Range<f64> = MIN_VALUE..0.4;
-    pub const LAND: Range<f64>  = 0.4..MAX_VALUE;
+/// Generic type to hold relevant data to define different types of terrain.
+pub struct TypeData<R>
+where
+    R: RangeBounds<Height>
+{
+    range: R,
+    colour: Rgb<u8>,
 }
 
-pub(super) mod colours {
-    use image::Rgb;
+impl TypeData<Range<Height>> {
+    fn contains(&self, value: &Height) -> bool {
+        self.range.contains(value)
+    }
+}
 
-    pub const OCEAN: Rgb<u8>    = Rgb([ 50,  99, 195]);
-    pub const LAND: Rgb<u8>     = Rgb([ 69, 120,  20]);
+impl TypeData<RangeInclusive<Height>> {
+    fn contains(&self, value: &Height) -> bool {
+        self.range.contains(value)
+    }
+}
+
+/// Data for the different terrain types.
+/// 
+/// Note, that i plan on expanding the range of values in the future, to make it more intuitive,
+/// but for now, this is made to work on the pure output data from a NoiseMap.
+mod terrain_data {
+    use image::Rgb;
+    use std::ops::{Range, RangeInclusive};
+
+    use super::{TypeData, Height};
+    use meta_data::*;
+
+    /// Data to define valid values for TypeData constants
+    pub(super) mod meta_data {
+        use super::super::{Height};
+        
+        /// The smallest, valid, value for the range of a terrain type
+        pub const MIN_VALUE: Height = -1.0;
+
+        /// The largest, valid, value for the range of a terrain type
+        pub const MAX_VALUE: Height =  1.0;
+    }
+
+
+    /// Women when they see me
+    pub const OCEAN: TypeData<Range<Height>> = TypeData {
+        range:  MIN_VALUE..0.4,
+        colour: Rgb([ 50,  99, 195]),
+    };
+
+    /// Women when i talk to them :(
+    pub const LAND: TypeData<RangeInclusive<Height>> = TypeData {
+        range:  0.4..=MAX_VALUE,
+        colour: Rgb([ 69, 120,  20]),
+    };
 }
 
 /// # TESTS TO ADD:
@@ -109,6 +176,11 @@ pub(super) mod colours {
 /// 
 /// `from_range()` method output is valid and as expected for ALL ranges?
 /// 
+/// `ident()` method returns the expected TerrainType (also test the asserts)
+#[cfg(test)]
 mod tests {
-
+    #[test]
+    fn terrain_type_range_validation() {
+        todo!();
+    }
 }

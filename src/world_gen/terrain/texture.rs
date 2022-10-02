@@ -15,8 +15,8 @@ pub fn texture_from_noise_map(
             noise_map.get_height() as u32,
             |x, y| {
                 let terrain = 
-                    TerrainType::from_height(
-                        noise_map.get_value(x as usize, y as usize)
+                    TerrainType::ident(
+                        &noise_map.get_value(x as usize, y as usize)
                     );
                 terrain.colour()
         });
