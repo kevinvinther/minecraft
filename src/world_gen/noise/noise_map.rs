@@ -29,7 +29,8 @@ impl NoiseMap {
     /// Creates a new and empty NoiseMap
     /// 
     /// The [`fill`](`Self::fill`) method should be used to fill the map with values
-    /// ## Note
+    /// 
+    /// # Note
     /// Note that all values, except for `height` and `width`, should be set with 
     /// their assosiated methods, before any further use of NoiseMaps created from this method
     pub fn new(height: usize, width: usize) -> Self {
@@ -46,7 +47,7 @@ impl NoiseMap {
     /// # Panics
     /// Panics if `lacunarity` or `persistance` are parsed as 
     ///     [`NAN`](`std::primitive::f64::NAN`), 
-    ///     [`INFINITY`](`std::primitive::f64::INFINITY`), 
+    ///     [`INFINITY`](`std::primitive::f64::INFINITY`) 
     ///     or 
     ///     [`NEG_INFINITY`](`std::primitive::f64::NEG_INFINITY`).
     pub fn from_noisefn(
@@ -76,7 +77,7 @@ impl NoiseMap {
     /// Sets the scale of the NoiseMap.
     /// 
     /// # Note
-    /// Note that the scale cannot be 0. If 0 is parsed into this method, 
+    /// The scale cannot be 0. If 0 is parsed into this method, 
     /// the scale will be set to [DEFAULT_SCALE]
     pub fn set_scale(&mut self, scale: usize) {
         match scale {
@@ -88,7 +89,8 @@ impl NoiseMap {
     /// Sets the octaves of the NoiseMap.
     /// 
     /// # Note
-    /// Note that the octaves cannot be 0. If 0 is parsed into this method, 
+    /// The number of octaves must be greater than 0. 
+    /// If 0 is parsed into this method, 
     /// the octaves will be set to [DEFAULT_OCTAVES]
     pub fn set_octaves(&mut self, octaves: usize) {
         match octaves {
@@ -100,15 +102,15 @@ impl NoiseMap {
     /// Sets the lacunarity of the NoiseMap
     /// 
     /// # Panics
-    /// Panics if the parsed lacunarity is 
+    /// Panics if the parsed lacunarity is either
     ///     [`NAN`](`std::primitive::f64::NAN`), 
-    ///     [`INFINITY`](`std::primitive::f64::INFINITY`), 
+    ///     [`INFINITY`](`std::primitive::f64::INFINITY`) 
     ///     or 
     ///     [`NEG_INFINITY`](`std::primitive::f64::NEG_INFINITY`).
     /// 
     /// ## Note
-    /// Note that the lacunarity can't be 0. If 0 is parsed into this method, 
-    /// the lacunarity will be set to [DEFAULT_LACUNARITY]
+    /// The lacunarity can't be 0. If 0 is parsed into this method, 
+    /// the lacunarity will be set to [`DEFAULT_LACUNARITY`]
     pub fn set_lacunarity(&mut self, lacunarity: f64) {
         match lacunarity {
             _x if _x == 0.0 => self.lacunarity = DEFAULT_LACUNARITY,
@@ -122,15 +124,15 @@ impl NoiseMap {
     /// Sets the persistance of the NoiseMap.
     /// 
     /// # Panics
-    /// Panics if the parsed persistance is 
+    /// Panics if the parsed persistance is either
     ///     [`NAN`](`std::primitive::f64::NAN`), 
-    ///     [`INFINITY`](`std::primitive::f64::INFINITY`), 
+    ///     [`INFINITY`](`std::primitive::f64::INFINITY`) 
     ///     or 
     ///     [`NEG_INFINITY`](`std::primitive::f64::NEG_INFINITY`).
     /// 
     /// ## Note
-    /// Note that although the persistance can be set to 0, 
-    /// doing this would be equivilant to only having 1 octave
+    /// Although the persistance can be set to 0, 
+    /// doing this would be equivilant to only having 1 octave.
     pub fn set_persistance(&mut self, persistance: f64) {
         match persistance {
             _x if _x.is_finite() => self.persistance = persistance,
@@ -142,7 +144,9 @@ impl NoiseMap {
 
     /// Changes the size of the NoiseMap.
     /// 
-    /// This will empty the map
+    /// This will empty the NoiseMap.
+    /// 
+    /// (There is propably no reason for us to ever use this...)
     pub fn _resize(&mut self, height: usize, width: usize) {
         self.height = height;
         self.width = width;
@@ -150,28 +154,31 @@ impl NoiseMap {
         self.values = Vec::with_capacity(height * width);
     }
 
-    /// Returns the actual index of the given row, column.
+    /// Returns the actual index of the given row, column in the list of values.
     /// 
     /// Uses a single vec as it is faster and easier to create a buffer from.
     fn _index(&self, row: usize, column: usize) -> usize {
-        row * self.width + column
+        row * self.width + column   // This lets us use a simple list of values, and read it as a 2-dimentional map
     }
 
-    /// Returns the value at the given index (the map is 0-index)
+    /// Returns the value at the given index (the map is 0-index).
     /// 
     /// # Panics
-    /// Panics if the NoiseMap is empty
+    /// Parsing invalid row, column values or calling this on an empty NoiseMap, will panic.
     pub fn get_value(&self, row: usize, column: usize) -> f64 {
-        assert!(!self.values.is_empty());
+        assert!(!self.values.is_empty());   // Is the NoiseMap empty?
+        assert!(row <= self.height);        // Is query out of bounds wrt. Map height?
+        assert!(column <= self.width);      // Is query out of bounds wrt. Map width?
+
         self.values[row * self.width + column]
     }
 
-    /// Returns the height of the NoiseMap
+    /// Returns the height of the NoiseMap.
     pub fn get_height(&self) -> usize {
         self.height
     }
 
-    /// Returns the width of the NoiseMap
+    /// Returns the width of the NoiseMap.
     pub fn get_width(&self) -> usize {
         self.width
     }
@@ -194,9 +201,11 @@ impl NoiseMap {
         self.values.push(value);
     }
 
-    /// Normalizes the values of the NoiseMap between 0 and 1
+    /// Normalizes the values of the NoiseMap between 0 and 1.
     /// 
     /// Maybe find a math crate to make this prettier :\
+    /// 
+    /// Also change this. Value should be between -1 and 1.
     fn normalize(&mut self) {
         let max = self.values   // Largest value
             .iter()
@@ -283,7 +292,6 @@ impl NoiseMap {
                 self.push(noise_height);    // Pushes the final value to the NoiseMap
             }
         }
-
         self.normalize();
     }
 

@@ -63,6 +63,7 @@ pub fn noisemap_demo(
     }
 }
 
+/// Saves a demo of the current terrain generation
 pub fn texture_demo(
     height: usize,
     width: usize,
@@ -72,9 +73,11 @@ pub fn texture_demo(
     persistance: f64,
     version: &str,
 ) -> () {
+    // Create a perlin noise generator and set its seed
     let perlin = Perlin::new();
     perlin.set_seed(DEFAULT_SEED);
 
+    // Create a NoiseMap
     let n_map = NoiseMap::from_noisefn(
         height,
         width,
@@ -86,9 +89,11 @@ pub fn texture_demo(
         DEFAULT_SEED
     );
 
+    // Used when naming the image file
     let lac_fmt = lacunarity.to_string().replace(".", "_");
     let per_fmt = persistance.to_string().replace(".", "_");
     
+    // The name for the image file
     let filename = 
         format!("{}/perlin{}x{}-{}-{}-{}.png",
         version,
@@ -104,6 +109,7 @@ pub fn texture_demo(
         (val * 100.0).round() as i32
     };
 
+    // Create HeightMap
     let h_map = HeightMap::from_noise_map(&n_map, height_mapper);
     
     texture_from_noise_map(h_map, &filename);

@@ -38,7 +38,10 @@ impl HeightMap {
     }
 }
 
+/// Methods for creating a HeightMap.
 impl HeightMap {
+
+    /// Returns an empty HeightMap with the given size.
     fn from_size(height: usize, width: usize) -> HeightMap {
         HeightMap {
             height,
@@ -47,6 +50,11 @@ impl HeightMap {
         }
     }
 
+    /// There is realy no reason to create a HeightMap in any other way.
+    /// 
+    /// ## Returns
+    /// Returns a HeightMap where every value is the result of parsing every, 
+    /// value from a NoiseMap through the given mapping function.
     pub fn from_noise_map<F>(noise_map: &NoiseMap, mapper: F) -> Self 
     where
         F: Fn(f64) -> Height
